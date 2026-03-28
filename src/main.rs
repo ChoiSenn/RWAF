@@ -9,21 +9,21 @@ use config::*;
 use log::*;
 
 use nfqueue::*;
-use std::fmt::Write;
 
-fn init_nfqueue() -> Queue {
+fn init_nfqueue() -> Queue<()> {
     // nfqueue 핸들 생성
-    let mut q = Queue::new().expect("queue create failed");
+    let mut q = Queue::new(());
 
     // netlink 소켓 open
-    q.open().expect("queue open failed");
+    q.open();
+    print_log!(LogLevel::Debug, "소켓 Open");
 
     // bind. IPv4 패킷 처리
-    q.unbind(libc::AF_INET).expect("unbind failed");
-    q.bind(libc::AF_INET).expect("bind failed");
+    q.unbind(libc::AF_INET);
+    q.bind(libc::AF_INET);
 
     // queue 0번에 callback 등록
-    q.create_queue(0, callback).expect("create queue failed");
+    q.create_queue(0, callback);
 
     // 전체 패킷 복사하도록 설정
     q.set_mode(nfqueue::CopyMode::CopyPacket, 0xffff);
@@ -32,7 +32,8 @@ fn init_nfqueue() -> Queue {
 }
 
 // 동기 처리 됨. 즉, 패킷이 처리되어 verdict 나올 때까지 대기. 패킷들은 queue에 쌓임.
-fn callback(mut msg: Message) {
+fn callback(msg: &Message, _data: &mut ()) {
+    print_log!(LogLevel::Debug, "Callback");
     let payload_data = msg.get_payload();
     for byte in payload_data {
         print!("{:02X} ", byte);
@@ -52,7 +53,7 @@ fn callback(mut msg: Message) {
 }
 
 fn main() {
-    println!("Start RWAF\n");
+    print_log!(LogLevel::Info, "Start RWAF");
 
     // init config
     set_config();
