@@ -4,52 +4,39 @@
 
 mod config;
 mod log;
+mod packet_capture;
 
 use config::*;
 use log::*;
+use packet_capture::*;
 
 use nfqueue::*;
 
-fn init_nfqueue() -> Queue<()> {
-    // nfqueue 핸들 생성
-    let mut q = Queue::new(());
-
-    // netlink 소켓 open
-    q.open();
-    print_log!(LogLevel::Debug, "소켓 Open");
-
-    // bind. IPv4 패킷 처리
-    q.unbind(libc::AF_INET);
-    q.bind(libc::AF_INET);
-
-    // queue 0번에 callback 등록
-    q.create_queue(0, callback);
-
-    // 전체 패킷 복사하도록 설정
-    q.set_mode(nfqueue::CopyMode::CopyPacket, 0xffff);
-
-    q
+struct Context {
+    dummy: u8,
 }
 
 // 동기 처리 됨. 즉, 패킷이 처리되어 verdict 나올 때까지 대기. 패킷들은 queue에 쌓임.
-fn callback(msg: &Message, _data: &mut ()) {
+fn callback(msg: &Message, _data: &mut Context) {
     print_log!(LogLevel::Debug, "Callback");
-    let payload_data = msg.get_payload();
-    for byte in payload_data {
-        print!("{:02X} ", byte);
-    }
-    println!();
 
-    if let Ok(xml) = msg.as_xml_str(&[nfqueue::XMLFormatFlags::XmlAll]) {
-        println!("XML\n{}", xml);
-    }
+    // let payload = msg.get_payload();
 
-    // 차후 패킷 처리 로직(packet_capture 호출)으로 변경
-    // let verdict = packet_capture(msg.get_payload());
-    // msg.set_verdict(verdict);
+    // if payload.is_empty() {
+    //     println!("empty payload");
+    //     msg.set_verdict(nfqueue::Verdict::Accept);
+    //     return;
+    // }
+
+    // for b in payload {
+    //     print!("{:02X} ", b);
+    // }
+    // println!();
+
+    let verdict = parse_packet(msg.get_payload());
 
     // 커널로 패킷 송신
-    msg.set_verdict(nfqueue::Verdict::Accept);  // or Drop
+    msg.set_verdict(verdict);  // or Drop
 }
 
 fn main() {
@@ -62,7 +49,25 @@ fn main() {
     set_log();
 
     // init nfqueue
-    let mut q = init_nfqueue();
+    // nfqueue 핸들 생성
+    let mut q = Queue::new(Context { dummy: 0 });
+
+    // netlink 소켓 open
+    q.open();
+    print_log!(LogLevel::Debug, "소켓 Open");
+
+    // bind. IPv4 패킷 처리
+    q.unbind(libc::AF_INET);
+    q.bind(libc::AF_INET);
+    print_log!(LogLevel::Debug, "bind");
+
+    // queue 0번에 callback 등록
+    q.create_queue(0, callback);
+    print_log!(LogLevel::Debug, "queue set");
+
+    // 전체 패킷 복사하도록 설정
+    q.set_mode(nfqueue::CopyMode::CopyPacket, 0xffff);
+    print_log!(LogLevel::Debug, "mode set");
 
     // nfqueue run
     q.run_loop();
