@@ -20,18 +20,12 @@ struct Context {
 fn callback(msg: &Message, _data: &mut Context) {
     print_log!(LogLevel::Debug, "Callback");
 
-    // let payload = msg.get_payload();
+    let verdict = nfqueue::Verdict::Drop;
 
-    // if payload.is_empty() {
-    //     println!("empty payload");
-    //     msg.set_verdict(nfqueue::Verdict::Accept);
-    //     return;
-    // }
-
-    // for b in payload {
-    //     print!("{:02X} ", b);
-    // }
-    // println!();
+    // 패킷 파싱, 파싱 된 패킷으로 탐지 및 차단 진행
+    if let Some(packet) = parse_packet(msg.get_payload()){
+        verdict = handle_packet(&packet);
+    }
 
     let verdict = parse_packet(msg.get_payload());
 

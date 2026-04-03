@@ -9,18 +9,43 @@ use std::net::Ipv4Addr;
 use std::fmt::Write;
 
 /// 파싱 된 패킷을 저장하는 구조체.
-struct ParsedPacket {
-	//ethernet_type,
-	src_ip: Ipv4Addr,
-	dst_ip: Ipv4Addr,
-	src_port: u16,
+struct ParsedPacket<'a> {
+    ip: IpHeader,
+    tcp: TcpHeader,
+    payload: &'a [u8],
+}
+
+// IP Header 정보 저장.
+struct IpHeader {
+    src: Ipv4Addr,
+    dst_ip: Ipv4Addr,
+    header_len: usize,
+}
+
+// TCP Header 정보 저장.
+struct TcpHeader {
+    src_port: u16,
 	dst_port: u16,
-	//seq,
-	payload: Vec<u8>,
+    header_len: usize,
+}
+
+// IP header 길이 반환
+fn parse_ipv4(packet: &[u8]) -> Option<IpHeader> {
+
+}
+
+// TCP header 길이 반환
+fn parse_tcp(packet: &[u8], ip_header_len: usize) -> Option<TcpHeader> {
+
+}
+
+// slice 반환
+fn extract_payload(packet: &[u8], offset: usize) -> &[u8] {
+
 }
 
 /// 캡쳐한 패킷을 파싱한다.
-pub fn parse_packet(packet: &[u8]) -> nfqueue::Verdict {
+pub fn parse_packet(packet: &[u8]) -> Option<ParsedPacket> {
     print_log!(LogLevel::Debug, "패킷 처리 : ");
 
     if packet.is_empty() {
@@ -28,17 +53,31 @@ pub fn parse_packet(packet: &[u8]) -> nfqueue::Verdict {
         return nfqueue::Verdict::Accept;
     }
 
-    print_packet(packet);
+    // print_packet(packet);
+
+    parse_ipv4(packet);
+
+    parse_tcp(packet);
+
+    extract_payloat(packet);
 
     print_log!(LogLevel::Debug, "\n");
 
     nfqueue::Verdict::Accept
 }
 
+// 파싱 된 패킷을 대상으로 정책 탐지 및 차단 처리한다.
+pub fn handle_packet(packet: &ParsedPacket) -> nfqueue::Verdict {
+    // 탐지 및 차단
+
+    Accept;  // 차후 구현 예정
+}
+
 /// 캡쳐한 패킷을 Hex와 ASCII 형태로 출력한다.
 pub fn print_packet(packet: &[u8]) {
     let mut offset = 0;
 
+    // 16 바이트 단위로 처리
     for chunk in packet.chunks(16) {
         let mut hex_part = String::new();
         let mut ascii_part = String::new();
@@ -70,4 +109,12 @@ pub fn print_packet(packet: &[u8]) {
 
         offset += 16;
     }
+}
+
+pub fn flow_manager() {
+
+}
+
+pub fn inspect_packet() {
+
 }
